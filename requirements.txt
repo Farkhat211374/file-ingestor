@@ -1,0 +1,16 @@
+fastapi[all]~=0.115.12
+uvicorn[standard]
+pydantic~=2.11.4
+sqlalchemy>=2.0
+asyncpg
+alembic~=1.15.2
+openpyxl
+pandas~=2.2.3
+python-dotenv
+pydantic-settings~=2.9.1
+pytest~=8.3.5
+httpx~=0.28.1
+pytest-asyncio
+coverage
+pytest-cov
+starlette~=0.46.2

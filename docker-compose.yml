@@ -1,0 +1,14 @@
+services:
+  web:
+    build: .
+    container_name: file_ingestor_web
+    restart: always
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    networks:
+      - file_ingestor_net
+
+networks:
+  file_ingestor_net:
