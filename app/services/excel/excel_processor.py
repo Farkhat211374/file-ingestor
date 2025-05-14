@@ -6,6 +6,7 @@ from typing import List
 from datetime import datetime
 import logging
 
+from app.utils.validators import validate_excel_file
 from app.db.schemas.mobile_operator import MobileOperatorCreate
 from app.db.models.mobile_operator import MobileOperatorModel
 
@@ -13,38 +14,28 @@ logger = logging.getLogger(__name__)
 
 async def process_excel_file(file: UploadFile, session: AsyncSession) -> int:
     try:
-        contents = await file.read()
-        df = pd.read_excel(contents)
-
-        required_columns = {
-            "source_operator", "isdn_number", "time_period", "imsi_number",
-            "record_type", "action_type", "lac_tac", "base_station_type",
-            "azimuth", "width", "height", "radius", "base_station_location",
-            "region", "imei"
-        }
-        if not required_columns.issubset(df.columns):
-            missing = required_columns - set(df.columns)
-            raise ValueError(f"Missing columns: {', '.join(missing)}")
+        df = await validate_excel_file(file)
 
         valid_data: List[dict] = []
+
         for idx, row in df.iterrows():
             try:
                 obj = MobileOperatorCreate(
-                    source_operator=row["source_operator"],
+                    source_operator=row["source_operator", "Unknown"],
                     isdn_number=row["isdn_number"],
                     time_period=parse_excel_datetime(row["time_period"]),
-                    imsi_number=row.get("imsi_number"),
-                    record_type=row.get("record_type"),
-                    action_type=row.get("action_type"),
+                    imsi_number=row.get("imsi_number", "Unknown"),
+                    record_type=row.get("record_type", "Unknown"),
+                    action_type=row.get("action_type", "Unknown"),
                     lac_tac=row.get("lac_tac"),
-                    base_station_type=row.get("base_station_type"),
+                    base_station_type=row.get("base_station_type", "Unknown"),
                     azimuth=row.get("azimuth"),
                     width=row.get("width"),
                     height=row.get("height"),
                     radius=row.get("radius"),
-                    base_station_location=row.get("base_station_location"),
-                    region=row.get("region"),
-                    imei=row.get("imei")
+                    base_station_location=row.get("base_station_location", "Unknown"),
+                    region=row.get("region", "Unknown"),
+                    imei=row.get("imei", "Unknown")
                 )
                 valid_data.append(obj.dict())
             except Exception as e:

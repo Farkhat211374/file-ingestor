@@ -1,6 +1,8 @@
 from fastapi import FastAPI
+from starlette.middleware.cors import CORSMiddleware
+
 from app.api.v1.routes import router
-from app.utils.exceptions import register_exception_handlers
+from app.utils.errors import register_exception_handlers
 
 app = FastAPI(
     title="File Ingestor",
@@ -13,8 +15,16 @@ app = FastAPI(
     }
 )
 
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 # Кастомные хендлеры ошибок
 register_exception_handlers(app)
 
 # Маршруты
-app.include_router(router, prefix="/api/v1")
+app.include_router(router, prefix="/api/v1", tags=["API endpoints"])
