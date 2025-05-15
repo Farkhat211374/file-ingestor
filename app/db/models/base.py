@@ -1,5 +1,5 @@
 from sqlalchemy import DateTime, Column, String, func, MetaData
-from sqlalchemy.orm import declarative_base, declared_attr
+from sqlalchemy.orm import declarative_base
 from app.core.config import settings
 
 metadata = MetaData(schema=settings.POSTGRES_SCHEMA)

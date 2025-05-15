@@ -1,65 +1,40 @@
-import pandas as pd
 from fastapi import UploadFile
+from fastapi.logger import logger
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import insert
-from typing import List
-from datetime import datetime
-import logging
+import time
 
+from app.db.repositories.mobile_operator import MobileOperatorRepository
+from app.utils.errors import AppException
+from app.utils.processors import parse_excel_data, parse_excel_data_fast
 from app.utils.validators import validate_excel_file
-from app.db.schemas.mobile_operator import MobileOperatorCreate
-from app.db.models.mobile_operator import MobileOperatorModel
 
-logger = logging.getLogger(__name__)
+BATCH_SIZE = 200
 
-async def process_excel_file(file: UploadFile, session: AsyncSession) -> int:
+async def process_excel_file(profile_id: int, file: UploadFile, session: AsyncSession) -> int:
+    start_time = time.perf_counter()
     try:
-        df = await validate_excel_file(file)
+        contents = await file.read()
+        await validate_excel_file(profile_id, file, contents)
 
-        valid_data: List[dict] = []
+        records = parse_excel_data_fast(contents)
 
-        for idx, row in df.iterrows():
-            try:
-                obj = MobileOperatorCreate(
-                    source_operator=row["source_operator", "Unknown"],
-                    isdn_number=row["isdn_number"],
-                    time_period=parse_excel_datetime(row["time_period"]),
-                    imsi_number=row.get("imsi_number", "Unknown"),
-                    record_type=row.get("record_type", "Unknown"),
-                    action_type=row.get("action_type", "Unknown"),
-                    lac_tac=row.get("lac_tac"),
-                    base_station_type=row.get("base_station_type", "Unknown"),
-                    azimuth=row.get("azimuth"),
-                    width=row.get("width"),
-                    height=row.get("height"),
-                    radius=row.get("radius"),
-                    base_station_location=row.get("base_station_location", "Unknown"),
-                    region=row.get("region", "Unknown"),
-                    imei=row.get("imei", "Unknown")
-                )
-                valid_data.append(obj.dict())
-            except Exception as e:
-                logger.warning(f"Row {idx + 2} skipped: {e}")
+        repo = MobileOperatorRepository(session)
 
-        if not valid_data:
-            raise ValueError("No valid rows")
-
+        total_inserted = 0
         async with session.begin():
-            await session.execute(insert(MobileOperatorModel).values(valid_data))
+            for i in range(0, len(records), BATCH_SIZE):
+                batch = records[i:i + BATCH_SIZE]
+                await repo.bulk_create(batch)
+                total_inserted += len(batch)
 
-        logger.info(f"Inserted {len(valid_data)} rows.")
-        return len(valid_data)
+        return total_inserted
 
-    except Exception as e:
-        logger.error(f"Processing error: {e}")
+    except AppException:
         raise
-
-def parse_excel_datetime(value):
-    if pd.isnull(value):
-        return None
-    if isinstance(value, datetime):
-        return value
-    try:
-        return pd.to_datetime(value)
-    except Exception:
-        return None
+    except Exception as e:
+        logger.exception("Unexpected processing error")
+        raise AppException(f"Unexpected error: {str(e)}")
+    finally:
+        elapsed = time.perf_counter() - start_time
+        logger.info(f"Execution time: {elapsed:.2f} seconds")
+        print(f"Execution time: {elapsed:.2f} seconds")

@@ -1,6 +1,9 @@
-import pandas as pd
-from fastapi import UploadFile, HTTPException
+from fastapi import UploadFile
 from io import BytesIO
+
+from openpyxl.reader.excel import load_workbook
+
+from app.utils.errors import BadRequestException
 
 REQUIRED_SHEET_NAME = "LBS"
 
@@ -22,47 +25,33 @@ REQUIRED_COLUMNS = {
     "IMEI"
 }
 
-def normalize(col: str) -> str:
-    return str(col).strip().replace('\u00a0', ' ').replace('\n', ' ')
+async def validate_excel_file(profile_id: int, file: UploadFile, contents: bytes):
+    if not isinstance(profile_id, int) or profile_id <= 0:
+        raise BadRequestException("Parameter 'profile_id' can not be less than or equal 0")
 
-async def validate_excel_file(file: UploadFile) -> pd.DataFrame:
     if not file.filename.endswith(".xlsx"):
-        raise HTTPException(status_code=400, detail="❌ File must be in .xlsx format")
+        raise BadRequestException("File must be in .xlsx format")
 
-    contents = await file.read()
+    if not contents:
+        raise BadRequestException("Uploaded file is empty or corrupted")
 
     try:
-        excel_file = pd.ExcelFile(BytesIO(contents))
+        wb = load_workbook(BytesIO(contents), read_only=True)
     except Exception as e:
-        raise HTTPException(status_code=400, detail=f"❌ Invalid Excel file: {str(e)}")
+        raise BadRequestException(f"Failed to read Excel file: {str(e)}")
 
-    if REQUIRED_SHEET_NAME not in excel_file.sheet_names:
-        raise HTTPException(
-            status_code=400,
-            detail=f"❌ Sheet '{REQUIRED_SHEET_NAME}' not found. Available: {excel_file.sheet_names}"
-        )
+    if REQUIRED_SHEET_NAME not in wb.sheetnames:
+        raise BadRequestException(f"Sheet '{REQUIRED_SHEET_NAME}' not found in Excel file")
 
-    # Пробуем найти заголовки на первых 10 строках
-    for header_row in range(10):
-        try:
-            df_try = excel_file.parse(REQUIRED_SHEET_NAME, header=header_row)
+    ws = wb[REQUIRED_SHEET_NAME]
+    first_row = next(ws.iter_rows(min_row=1, max_row=1, values_only=True), None)
 
-            for idx, row in df_try.iterrows():
-                print(f"[DEBUG] row[{idx}] keys: {row.keys().tolist()}")
-                ...
+    if not first_row:
+        raise BadRequestException("Sheet is empty")
 
-            if isinstance(df_try.columns, pd.MultiIndex):
-                df_try.columns = [' '.join(str(part).strip() for part in col if part) for col in df_try.columns]
-            else:
-                df_try.columns = [str(col).strip().replace('\u00a0', ' ').replace('\n', ' ') for col in df_try.columns]
+    actual_columns = set(filter(None, first_row))  # Убираем None
+    missing = REQUIRED_COLUMNS - actual_columns
 
-            if REQUIRED_COLUMNS.issubset(set(df_try.columns)):
-                print(f"[DEBUG] Header found at row: {header_row}")
-                return df_try
-        except Exception as e:
-            continue
+    if missing:
+        raise BadRequestException(f"Missing required columns: {', '.join(missing)}")
 
-    raise HTTPException(
-        status_code=400,
-        detail="❌ Could not find header row with all required columns in the first 10 rows."
-    )

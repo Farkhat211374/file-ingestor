@@ -1,9 +1,11 @@
-from fastapi import APIRouter, UploadFile, File, Depends, HTTPException
+from fastapi import APIRouter, UploadFile, File, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.db.dependencies import get_session
 from app.services.excel.excel_processor import process_excel_file
 
 router = APIRouter()
+
 
 @router.post("/xlsx/{profile_id}")
 async def upload_excel(
@@ -11,8 +13,5 @@ async def upload_excel(
         file: UploadFile = File(...),
         session: AsyncSession = Depends(get_session)
 ):
-    try:
-        inserted = await process_excel_file(file, session)
-        return {"message": "Success", "rows_inserted": inserted}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    inserted = await process_excel_file(profile_id, file, session)
+    return {"message": "Success", "rows_inserted": inserted}

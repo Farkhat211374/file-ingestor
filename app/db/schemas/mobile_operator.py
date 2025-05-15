@@ -3,7 +3,7 @@ from typing import Optional
 from datetime import datetime
 
 class MobileOperatorCreate(BaseModel):
-    source_operator: str
+    source_operator: Optional[str]
     isdn_number: str
     time_period: datetime
     imsi_number: Optional[str]
@@ -12,8 +12,8 @@ class MobileOperatorCreate(BaseModel):
     lac_tac: Optional[str]
     base_station_type: Optional[str]
     azimuth: Optional[float]
-    width: Optional[str]
-    height: Optional[str]
+    width: str
+    height: str
     radius: Optional[str]
     base_station_location: Optional[str]
     region: Optional[str]
