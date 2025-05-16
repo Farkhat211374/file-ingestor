@@ -1,3 +1,5 @@
+from collections import defaultdict
+
 from openpyxl import load_workbook
 from io import BytesIO
 from datetime import datetime
@@ -127,3 +129,42 @@ def parse_excel_data_fast(contents: bytes) -> list[dict]:
 
     # Возврат в виде списка словарей
     return df.to_dict(orient="records")
+
+
+def parse_excel_data_parallel(contents: bytes) -> dict[str, list[dict]]:
+    wb = load_workbook(BytesIO(contents), read_only=True, data_only=True)
+    ws = wb["LBS"]
+
+    header = [cell.value for cell in next(ws.iter_rows(min_row=1, max_row=1))]
+    msisdn_col = header.index("Msisdn / Номер ISDN мобильного абонента")
+
+    rows_by_number = defaultdict(list)
+
+    for row in ws.iter_rows(min_row=2, values_only=True):
+        number = row[msisdn_col]
+        if not number:
+            continue
+
+        record = dict(zip(header, row))
+        rows_by_number[number].append(record)
+
+    return rows_by_number
+
+
+def parse_excel_stream_grouped(contents: bytes) -> dict[str, list[dict]]:
+    wb = load_workbook(BytesIO(contents), read_only=True, data_only=True)
+    ws = wb["LBS"]
+
+    header = [cell.value for cell in next(ws.iter_rows(min_row=1, max_row=1))]
+    number_idx = header.index("Msisdn / Номер ISDN мобильного абонента")
+
+    groups = defaultdict(list)
+
+    for row in ws.iter_rows(min_row=2, values_only=True):
+        if not row or not row[number_idx]:
+            continue
+        number = str(row[number_idx])
+        record = dict(zip(header, row))
+        groups[number].append(record)
+
+    return groups
