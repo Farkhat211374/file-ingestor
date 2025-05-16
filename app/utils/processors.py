@@ -121,7 +121,8 @@ def parse_excel_data_fast(contents: bytes) -> list[dict]:
     df.rename(columns=COLUMN_MAPPING, inplace=True)
 
     # Типизация
-    df["time_period"] = pd.to_datetime(df["time_period"], errors="coerce").dt.tz_localize(None)
+    df["time_period"] = pd.to_datetime(df["time_period"], errors="coerce", utc=True)
+    df["time_period"] = df["time_period"].dt.tz_localize(None)
     df["azimuth"] = pd.to_numeric(df.get("azimuth", None), errors="coerce")
 
     # Возврат в виде списка словарей

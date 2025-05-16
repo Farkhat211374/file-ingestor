@@ -27,4 +27,4 @@ app.add_middleware(
 register_exception_handlers(app)
 
 # Маршруты
-app.include_router(router, prefix="/api/v1", tags=["API endpoints"])
+app.include_router(router, prefix="/api/v1")

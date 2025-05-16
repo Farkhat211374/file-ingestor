@@ -1,7 +1,6 @@
 from fastapi import APIRouter
 
 from app.core.config import settings
-from app.utils.errors import BadRequestException
 
 router = APIRouter()
 
