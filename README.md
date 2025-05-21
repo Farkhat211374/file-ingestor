@@ -58,7 +58,9 @@ my_fastapi_project/
 │   ├── services/
 │   │   ├── excel/
 │   │   │   ├── processor.py
-│   │   │   └── validators.py
+│   │   │   ├── config.py
+│   │   │   ├── transformer.py
+│   │   │   └── xml_parser.py
 │   │   └── pdf/
 │   ├── utils/
 │   │   ├── errors/
@@ -66,6 +68,7 @@ my_fastapi_project/
 │   │   │   ├── base.py
 │   │   │   └── handlers.py
 │   │   └── validators/
+│   │   │   ├── __init__.py
 │   │       └── excel_validators.py
 │   └── main.py
 ├── migrations/
